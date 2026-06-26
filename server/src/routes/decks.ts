@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "../middleware/requireAuth";
 
 import db from "../db";
 import { createId } from "../utils/ids";
@@ -53,7 +54,9 @@ function ensureUserExists(userId: string) {
 }
 
 router.get("/:id/decks", (req, res) => {
+
     const userId = String(req.params.id ?? "").trim();
+    
 
     const rows = db
         .prepare(
@@ -88,8 +91,12 @@ router.get("/:id/decks", (req, res) => {
     });
 });
 
-router.post("/:id/decks", (req, res) => {
-    const userId = String(req.params.id ?? "").trim();
+router.post(
+    "/:id/decks",
+    requireAuth,
+    (req, res) => {
+        const userId = String(req.params.id ?? "").trim();
+        
 
     if (!userId) {
         return res.status(400).json({
@@ -191,6 +198,13 @@ router.post("/:id/decks", (req, res) => {
 
 router.get("/:id/decks/:deckId", (req, res) => {
     const userId = String(req.params.id ?? "").trim();
+    const authenticatedUserId =
+        (req as any).userId;
+    if (authenticatedUserId !== userId) {
+        return res.status(403).json({
+            error: "Forbidden",
+        });
+    }
     const deckId = String(req.params.deckId ?? "").trim();
 
     const deckRow = db
@@ -268,8 +282,18 @@ router.get("/:id/decks/:deckId", (req, res) => {
     });
 });
 
-router.patch("/:id/decks/:deckId", (req, res) => {
-    const userId = String(req.params.id ?? "").trim();
+router.patch(
+    "/:id/decks/:deckId",
+    requireAuth,
+    (req, res) => {
+        const userId = String(req.params.id ?? "").trim();
+        const authenticatedUserId =
+            (req as any).userId;
+        if (authenticatedUserId !== userId) {
+            return res.status(403).json({
+                error: "Forbidden",
+            });
+        }
     const deckId = String(req.params.deckId ?? "").trim();
 
     const existing = db
@@ -403,8 +427,18 @@ router.patch("/:id/decks/:deckId", (req, res) => {
     });
 });
 
-router.post("/:id/decks/:deckId/replace-cards", (req, res) => {
-    const userId = String(req.params.id ?? "").trim();
+router.post(
+    "/:id/decks/:deckId/replace-cards",
+    requireAuth,
+    (req, res) => {
+        const userId = String(req.params.id ?? "").trim();
+        const authenticatedUserId =
+            (req as any).userId;
+        if (authenticatedUserId !== userId) {
+            return res.status(403).json({
+                error: "Forbidden",
+            });
+        }
     const deckId = String(req.params.deckId ?? "").trim();
 
     const cards = Array.isArray(req.body.cards)
@@ -547,8 +581,18 @@ router.post("/:id/decks/:deckId/replace-cards", (req, res) => {
     });
 });
 
-router.delete("/:id/decks/:deckId", (req, res) => {
-    const userId = String(req.params.id ?? "").trim();
+router.delete(
+    "/:id/decks/:deckId",
+    requireAuth,
+    (req, res) => {
+        const userId = String(req.params.id ?? "").trim();
+        const authenticatedUserId =
+            (req as any).userId;
+        if (authenticatedUserId !== userId) {
+            return res.status(403).json({
+                error: "Forbidden",
+            });
+        }
     const deckId = String(req.params.deckId ?? "").trim();
 
     const transaction = db.transaction(() => {

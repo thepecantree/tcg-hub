@@ -1,4 +1,4 @@
-import { Tabs } from "expo-router";
+import { Tabs, router } from "expo-router";
 import { Ionicons } from "@expo/vector-icons";
 
 import { useTheme } from "@/theme/ThemeContext";
@@ -48,6 +48,11 @@ export default function TabLayout() {
         >
             <Tabs.Screen
                 name="hubs"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/hubs");
+                    },
+                }}
                 options={{
                     title: "HUBS",
                     tabBarIcon: ({
@@ -65,6 +70,11 @@ export default function TabLayout() {
 
             <Tabs.Screen
                 name="cards"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/cards");
+                    },
+                }}
                 options={{
                     title: "CARDS",
                     tabBarIcon: ({
@@ -82,6 +92,11 @@ export default function TabLayout() {
 
             <Tabs.Screen
                 name="people"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/people");
+                    },
+                }}
                 options={{
                     title: "PEOPLE",
                     tabBarIcon: ({
@@ -99,6 +114,11 @@ export default function TabLayout() {
 
             <Tabs.Screen
                 name="profile"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/profile");
+                    },
+                }}
                 options={{
                     title: "PROFILE",
                     tabBarIcon: ({
@@ -116,6 +136,11 @@ export default function TabLayout() {
 
             <Tabs.Screen
                 name="forum"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/forum");
+                    },
+                }}
                 options={{
                     title: "FORUM",
                     tabBarIcon: ({
@@ -189,6 +214,11 @@ export default function TabLayout() {
 
             <Tabs.Screen
                 name="admin"
+                listeners={{
+                    tabPress: () => {
+                        router.replace("/admin");
+                    },
+                }}
                 options={{
                     title: "ADMIN",
                     href:
