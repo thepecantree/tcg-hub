@@ -3,38 +3,35 @@ import {
 } from "expo-router";
 
 import {
-    ActivityIndicator,
     View,
+    ActivityIndicator,
 } from "react-native";
-
-import {
-    useTheme,
-} from "@/theme/ThemeContext";
 
 import {
     useAuth,
 } from "@/auth/AuthContext";
 
-export default function Index() {
-    const { theme } =
-        useTheme();
+import {
+    useTheme,
+} from "@/theme/ThemeContext";
 
+export default function ProfileScreen() {
     const {
         user,
         loading,
     } = useAuth();
 
-    if (
-        loading
-    ) {
+    const {
+        theme,
+    } = useTheme();
+
+    if (loading) {
         return (
             <View
                 style={{
                     flex: 1,
-                    alignItems:
-                        "center",
-                    justifyContent:
-                        "center",
+                    alignItems: "center",
+                    justifyContent: "center",
                     backgroundColor:
                         theme.colors.background,
                 }}
@@ -44,7 +41,7 @@ export default function Index() {
         );
     }
 
-    if (!user) {
+    if (!user?.id) {
         return (
             <Redirect
                 href={
@@ -57,7 +54,14 @@ export default function Index() {
     return (
         <Redirect
             href={
-                "/(tabs)/hubs" as any
+                {
+                    pathname:
+                        "/(tabs)/player/[id]",
+                    params: {
+                        id:
+                            user.id,
+                    },
+                } as any
             }
         />
     );

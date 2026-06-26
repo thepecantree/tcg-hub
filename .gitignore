@@ -41,3 +41,17 @@ app-example
 # generated native folders
 /ios
 /android
+
+server/cards.db
+server/data/cards.db
+server/data/all_cards.json
+.vs/
+.expo/
+node_modules/
+*.db
+*.sqlite
+*.sqlite3
+server/data/all_cards.json
+structure.txt
+*.db-shm
+*.db-wal
