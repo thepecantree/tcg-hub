@@ -7,8 +7,9 @@ import {
 
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-const API_BASE_URL =
-    "http://localhost:4000";
+import {
+    API_BASE_URL,
+} from "@/api/config";
 
 export type AuthUser = {
     id: string;

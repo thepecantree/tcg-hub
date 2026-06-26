@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 import {
-    useMemo,
+    useEffect,
     useState,
 } from "react";
 
@@ -20,23 +20,19 @@ import {
 import { useTheme } from "@/theme/ThemeContext";
 
 import {
-    mockPlayers,
-} from "@/data/mockPlayers";
+    API_BASE_URL,
+} from "@/api/config";
 
 import type {
     UserCardEntry,
 } from "@/types/cards";
 
-import {
-    binderCardMatchesWishlistCard,
-} from "@/utils/cardMatching";
-
 type AvailabilityPlayer = {
     id: string;
     displayName: string;
     username: string;
-    distance: string;
-    avatar: string;
+    location?: string | null;
+    avatar?: string | null;
     quantity: number;
     variants: UserCardEntry[];
 };
@@ -47,76 +43,32 @@ type AvailabilityCard = {
     players: AvailabilityPlayer[];
 };
 
+type AvailabilityRow = {
+    userId: string;
+    username: string;
+    displayName: string;
+    avatar?: string | null;
+    location?: string | null;
+
+    cardName: string;
+    scryfallId?: string | null;
+    setName?: string | null;
+    setCode?: string | null;
+    collectorNumber?: string | null;
+    imageSmall?: string | null;
+    typeLine?: string | null;
+    rarity?: string | null;
+    manaValue?: number | null;
+    colors?: string | null;
+    foil?: number | boolean;
+    quantity: number;
+    printSpecific?: number | boolean;
+};
+
 type Props = {
     wishlistCards: UserCardEntry[];
     localUserId?: string;
 };
-
-function buildAvailabilityCards(
-    wishlistCards: UserCardEntry[],
-    localUserId?: string
-): AvailabilityCard[] {
-    return wishlistCards
-        .map((wishlistCard) => {
-            const players =
-                mockPlayers
-                    .filter(
-                        (player) =>
-                            !localUserId ||
-                            player.id !== localUserId
-                    )
-                    .map((player) => {
-                        const available =
-                            player.collection?.filter(
-                                (binderCard) =>
-                                    binderCardMatchesWishlistCard(
-                                        binderCard,
-                                        wishlistCard
-                                    )
-                            ) ?? [];
-
-                        const quantity =
-                            available.reduce(
-                                (total, card) =>
-                                    total + (card.quantity ?? 1),
-                                0
-                            );
-
-                        if (quantity <= 0) {
-                            return null;
-                        }
-
-                        return {
-                            id: player.id,
-                            displayName: player.displayName,
-                            username: player.username,
-                            distance: player.distance,
-                            avatar: player.avatar,
-                            quantity,
-                            variants: available,
-                        };
-                    })
-                    .filter(Boolean) as AvailabilityPlayer[];
-
-            const totalAvailable =
-                players.reduce(
-                    (total, player) =>
-                        total + player.quantity,
-                    0
-                );
-
-            return {
-                card: wishlistCard,
-                totalAvailable,
-                players,
-            };
-        })
-        .filter((item) => item.totalAvailable > 0)
-        .sort(
-            (a, b) =>
-                b.totalAvailable - a.totalAvailable
-        );
-}
 
 export default function LocalWishlistAvailability({
     wishlistCards,
@@ -124,6 +76,7 @@ export default function LocalWishlistAvailability({
 }: Props) {
     const { theme } =
         useTheme();
+
     const { width } =
         useWindowDimensions();
 
@@ -138,24 +91,108 @@ export default function LocalWishlistAvailability({
         );
 
     const [
+        availabilityCards,
+        setAvailabilityCards,
+    ] = useState<AvailabilityCard[]>([]);
+
+    const [
         selectedCard,
         setSelectedCard,
     ] = useState<AvailabilityCard | null>(
         null
     );
 
-    const availabilityCards =
-        useMemo(
-            () =>
-                buildAvailabilityCards(
-                    wishlistCards,
-                    localUserId
-                ),
-            [
-                wishlistCards,
-                localUserId,
-            ]
-        );
+    useEffect(() => {
+        let cancelled = false;
+
+        async function loadAvailability() {
+            const cardsWithNames =
+                wishlistCards.filter(
+                    (card) =>
+                        !!card.cardName
+                );
+
+            if (cardsWithNames.length === 0) {
+                setAvailabilityCards([]);
+                return;
+            }
+
+            try {
+                const results =
+                    await Promise.all(
+                        cardsWithNames.map(
+                            async (card) => {
+                                const response =
+                                    await fetch(
+                                        `${API_BASE_URL}/cards/availability?cardName=${encodeURIComponent(
+                                            card.cardName
+                                        )}&excludeUserId=${encodeURIComponent(
+                                            localUserId ?? ""
+                                        )}`
+                                    );
+
+                                if (!response.ok) {
+                                    return null;
+                                }
+
+                                const rows =
+                                    await response.json();
+
+                                const players =
+                                    Array.isArray(rows)
+                                        ? buildPlayers(rows)
+                                        : [];
+
+                                const totalAvailable =
+                                    players.reduce(
+                                        (total, player) =>
+                                            total +
+                                            player.quantity,
+                                        0
+                                    );
+
+                                if (totalAvailable <= 0) {
+                                    return null;
+                                }
+
+                                return {
+                                    card,
+                                    totalAvailable,
+                                    players,
+                                };
+                            }
+                        )
+                    );
+
+                if (cancelled) {
+                    return;
+                }
+
+                setAvailabilityCards(
+                    results
+                        .filter(Boolean)
+                        .sort(
+                            (a, b) =>
+                                (b?.totalAvailable ?? 0) -
+                                (a?.totalAvailable ?? 0)
+                        ) as AvailabilityCard[]
+                );
+            } catch {
+                if (!cancelled) {
+                    setAvailabilityCards([]);
+                }
+            }
+        }
+
+        loadAvailability();
+
+        return () => {
+            cancelled = true;
+        };
+    }, [
+        wishlistCards,
+        localUserId,
+    ]);
 
     if (availabilityCards.length === 0) {
         return (
@@ -173,7 +210,8 @@ export default function LocalWishlistAvailability({
             >
                 <Text
                     style={{
-                        color: theme.colors.text,
+                        color:
+                            theme.colors.text,
                         fontSize: 20,
                         fontWeight: "900",
                         marginBottom: 6,
@@ -184,7 +222,8 @@ export default function LocalWishlistAvailability({
 
                 <Text
                     style={{
-                        color: theme.colors.textMuted,
+                        color:
+                            theme.colors.textMuted,
                     }}
                 >
                     No nearby trade binder matches found for cards in your wishlist yet.
@@ -208,7 +247,8 @@ export default function LocalWishlistAvailability({
         >
             <Text
                 style={{
-                    color: theme.colors.text,
+                    color:
+                        theme.colors.text,
                     fontSize: 20,
                     fontWeight: "900",
                     marginBottom: 4,
@@ -219,7 +259,8 @@ export default function LocalWishlistAvailability({
 
             <Text
                 style={{
-                    color: theme.colors.textMuted,
+                    color:
+                        theme.colors.textMuted,
                     marginBottom: 14,
                 }}
             >
@@ -238,12 +279,14 @@ export default function LocalWishlistAvailability({
                     <View
                         key={`${item.card.cardName}-${item.card.scryfallId ?? "any"}`}
                         style={{
-                            width: cardWidth,
+                            width:
+                                cardWidth,
                         }}
                     >
                         <View
                             style={{
-                                position: "relative",
+                                position:
+                                    "relative",
                             }}
                         >
                             <Pressable
@@ -267,9 +310,12 @@ export default function LocalWishlistAvailability({
                                                 item.card.imageSmall,
                                         }}
                                         style={{
-                                            width: cardWidth,
-                                            height: cardHeight,
-                                            borderRadius: 8,
+                                            width:
+                                                cardWidth,
+                                            height:
+                                                cardHeight,
+                                            borderRadius:
+                                                8,
                                             backgroundColor:
                                                 theme.colors.surfaceAlt,
                                             borderWidth:
@@ -285,9 +331,12 @@ export default function LocalWishlistAvailability({
                                 ) : (
                                     <View
                                         style={{
-                                            width: cardWidth,
-                                            height: cardHeight,
-                                            borderRadius: 8,
+                                            width:
+                                                cardWidth,
+                                            height:
+                                                cardHeight,
+                                            borderRadius:
+                                                8,
                                             backgroundColor:
                                                 theme.colors.surfaceAlt,
                                             borderWidth:
@@ -305,10 +354,13 @@ export default function LocalWishlistAvailability({
 
                             <Pressable
                                 onPress={() =>
-                                    setSelectedCard(item)
+                                    setSelectedCard(
+                                        item
+                                    )
                                 }
                                 style={{
-                                    position: "absolute",
+                                    position:
+                                        "absolute",
                                     right: -7,
                                     bottom: -7,
                                     minWidth: 30,
@@ -320,15 +372,18 @@ export default function LocalWishlistAvailability({
                                     borderWidth: 2,
                                     borderColor:
                                         theme.colors.surface,
-                                    alignItems: "center",
+                                    alignItems:
+                                        "center",
                                     justifyContent:
                                         "center",
                                 }}
                             >
                                 <Text
                                     style={{
-                                        color: "white",
-                                        fontWeight: "900",
+                                        color:
+                                            "white",
+                                        fontWeight:
+                                            "900",
                                     }}
                                 >
                                     {item.totalAvailable}
@@ -339,10 +394,12 @@ export default function LocalWishlistAvailability({
                         <Text
                             numberOfLines={2}
                             style={{
-                                color: theme.colors.text,
+                                color:
+                                    theme.colors.text,
                                 fontSize: 12,
                                 fontWeight: "800",
-                                textAlign: "center",
+                                textAlign:
+                                    "center",
                                 marginTop: 8,
                             }}
                         >
@@ -352,179 +409,273 @@ export default function LocalWishlistAvailability({
                 ))}
             </ScrollView>
 
-            <Modal
-                visible={selectedCard !== null}
-                transparent
-                animationType="fade"
-                onRequestClose={() =>
+            <AvailabilityModal
+                selectedCard={
+                    selectedCard
+                }
+                onClose={() =>
                     setSelectedCard(null)
                 }
+            />
+        </View>
+    );
+}
+
+function buildPlayers(
+    rows: AvailabilityRow[]
+): AvailabilityPlayer[] {
+    const byUser =
+        new Map<string, AvailabilityPlayer>();
+
+    for (const row of rows) {
+        const variant: UserCardEntry = {
+            cardName: row.cardName,
+
+            scryfallId: row.scryfallId ?? null,
+            setName: row.setName ?? null,
+            setCode: row.setCode ?? null,
+            collectorNumber: row.collectorNumber ?? null,
+            imageSmall: row.imageSmall ?? null,
+
+            typeLine: row.typeLine ?? null,
+            rarity: row.rarity ?? null,
+            manaValue: row.manaValue ?? null,
+            colors: row.colors ?? null,
+
+            foil: Boolean(row.foil),
+            quantity: Number(row.quantity ?? 1),
+            printSpecific: Boolean(row.printSpecific),
+        };
+
+        const existing =
+            byUser.get(row.userId);
+
+        if (existing) {
+            existing.quantity +=
+                Number(row.quantity ?? 1);
+
+            existing.variants.push(
+                variant
+            );
+
+            continue;
+        }
+
+        byUser.set(
+            row.userId,
+            {
+                id:
+                    row.userId,
+
+                displayName:
+                    row.displayName,
+
+                username:
+                    row.username,
+
+                location:
+                    row.location,
+
+                avatar:
+                    row.avatar,
+
+                quantity:
+                    Number(row.quantity ?? 1),
+
+                variants: [
+                    variant,
+                ],
+            }
+        );
+    }
+
+    return Array.from(
+        byUser.values()
+    );
+}
+
+function AvailabilityModal({
+    selectedCard,
+    onClose,
+}: {
+    selectedCard: AvailabilityCard | null;
+    onClose: () => void;
+}) {
+    const { theme } =
+        useTheme();
+
+    return (
+        <Modal
+            visible={
+                selectedCard !== null
+            }
+            transparent
+            animationType="fade"
+            onRequestClose={
+                onClose
+            }
+        >
+            <Pressable
+                onPress={
+                    onClose
+                }
+                style={{
+                    flex: 1,
+                    backgroundColor:
+                        "rgba(0,0,0,.55)",
+                    justifyContent:
+                        "center",
+                    alignItems:
+                        "center",
+                    padding: 20,
+                }}
             >
                 <Pressable
-                    onPress={() =>
-                        setSelectedCard(null)
+                    onPress={(event) =>
+                        event.stopPropagation()
                     }
                     style={{
-                        flex: 1,
+                        width: "100%",
+                        maxWidth: 420,
                         backgroundColor:
-                            "rgba(0,0,0,.55)",
-                        justifyContent: "center",
-                        alignItems: "center",
-                        padding: 20,
+                            theme.colors.surface,
+                        borderRadius: 16,
+                        padding: 16,
+                        borderWidth: 1,
+                        borderColor:
+                            theme.colors.border,
                     }}
                 >
-                    <Pressable
-                        onPress={(event) =>
-                            event.stopPropagation()
-                        }
+                    <Text
                         style={{
-                            width: "100%",
-                            maxWidth: 420,
-                            backgroundColor:
-                                theme.colors.surface,
-                            borderRadius: 16,
-                            padding: 16,
-                            borderWidth: 1,
-                            borderColor:
-                                theme.colors.border,
+                            color:
+                                theme.colors.text,
+                            fontSize: 22,
+                            fontWeight: "900",
+                            marginBottom: 4,
                         }}
                     >
-                        <Text
-                            style={{
-                                color: theme.colors.text,
-                                fontSize: 22,
-                                fontWeight: "900",
-                                marginBottom: 4,
-                            }}
-                        >
-                            {
-                                selectedCard?.card
-                                    .cardName
-                            }
-                        </Text>
+                        {selectedCard?.card.cardName}
+                    </Text>
 
-                        <Text
-                            style={{
-                                color:
-                                    theme.colors.textMuted,
-                                marginBottom: 14,
-                            }}
-                        >
-                            {selectedCard?.totalAvailable} available nearby
-                        </Text>
+                    <Text
+                        style={{
+                            color:
+                                theme.colors.textMuted,
+                            marginBottom: 14,
+                        }}
+                    >
+                        {selectedCard?.totalAvailable} available nearby
+                    </Text>
 
-                        <View
-                            style={{
-                                gap: 10,
-                            }}
-                        >
-                            {selectedCard?.players.map(
-                                (player) => (
-                                    <Pressable
-                                        key={player.id}
-                                        onPress={() => {
-                                            setSelectedCard(
-                                                null
-                                            );
+                    <View
+                        style={{
+                            gap: 10,
+                        }}
+                    >
+                        {selectedCard?.players.map((player) => (
+                            <Pressable
+                                key={
+                                    player.id
+                                }
+                                onPress={() => {
+                                    onClose();
 
-                                            router.push({
-                                                pathname:
-                                                    "/(tabs)/player/[id]",
-                                                params: {
-                                                    id:
-                                                        player.id,
-                                                },
-                                            });
-                                        }}
+                                    router.push({
+                                        pathname:
+                                            "/(tabs)/player/[id]",
+                                        params: {
+                                            id:
+                                                player.id,
+                                        },
+                                    });
+                                }}
+                                style={{
+                                    flexDirection:
+                                        "row",
+                                    alignItems:
+                                        "center",
+                                    gap: 12,
+                                    padding: 10,
+                                    borderRadius: 12,
+                                    backgroundColor:
+                                        theme.colors.surfaceAlt,
+                                }}
+                            >
+                                <Image
+                                    source={{
+                                        uri:
+                                            player.avatar ||
+                                            "https://placehold.co/300x300/png",
+                                    }}
+                                    style={{
+                                        width: 46,
+                                        height: 46,
+                                        borderRadius: 23,
+                                        backgroundColor:
+                                            theme.colors.surface,
+                                    }}
+                                />
+
+                                <View
+                                    style={{
+                                        flex: 1,
+                                    }}
+                                >
+                                    <Text
                                         style={{
-                                            flexDirection:
-                                                "row",
-                                            alignItems:
-                                                "center",
-                                            gap: 12,
-                                            padding: 10,
-                                            borderRadius: 12,
-                                            backgroundColor:
-                                                theme.colors.surfaceAlt,
+                                            color:
+                                                theme.colors.text,
+                                            fontWeight:
+                                                "900",
                                         }}
                                     >
-                                        <Image
-                                            source={{
-                                                uri:
-                                                    player.avatar,
-                                            }}
-                                            style={{
-                                                width: 46,
-                                                height: 46,
-                                                borderRadius: 23,
-                                                backgroundColor:
-                                                    theme.colors.surface,
-                                            }}
-                                        />
+                                        {player.displayName}
+                                    </Text>
 
-                                        <View
-                                            style={{
-                                                flex: 1,
-                                            }}
-                                        >
-                                            <Text
-                                                style={{
-                                                    color:
-                                                        theme.colors.text,
-                                                    fontWeight:
-                                                        "900",
-                                                }}
-                                            >
-                                                {
-                                                    player.displayName
-                                                }
-                                            </Text>
+                                    <Text
+                                        style={{
+                                            color:
+                                                theme.colors.textMuted,
+                                        }}
+                                    >
+                                        @{player.username}
+                                        {player.location
+                                            ? ` · ${player.location}`
+                                            : ""}
+                                    </Text>
+                                </View>
 
-                                            <Text
-                                                style={{
-                                                    color:
-                                                        theme.colors.textMuted,
-                                                }}
-                                            >
-                                                @{player.username} · {player.distance}
-                                            </Text>
-                                        </View>
-
-                                        <View
-                                            style={{
-                                                minWidth: 34,
-                                                height: 34,
-                                                borderRadius: 17,
-                                                backgroundColor:
-                                                    theme.colors.primary,
-                                                alignItems:
-                                                    "center",
-                                                justifyContent:
-                                                    "center",
-                                                paddingHorizontal:
-                                                    8,
-                                            }}
-                                        >
-                                            <Text
-                                                style={{
-                                                    color:
-                                                        "white",
-                                                    fontWeight:
-                                                        "900",
-                                                }}
-                                            >
-                                                {
-                                                    player.quantity
-                                                }
-                                            </Text>
-                                        </View>
-                                    </Pressable>
-                                )
-                            )}
-                        </View>
-                    </Pressable>
+                                <View
+                                    style={{
+                                        minWidth: 34,
+                                        height: 34,
+                                        borderRadius: 17,
+                                        backgroundColor:
+                                            theme.colors.primary,
+                                        alignItems:
+                                            "center",
+                                        justifyContent:
+                                            "center",
+                                        paddingHorizontal: 8,
+                                    }}
+                                >
+                                    <Text
+                                        style={{
+                                            color:
+                                                "white",
+                                            fontWeight:
+                                                "900",
+                                        }}
+                                    >
+                                        {player.quantity}
+                                    </Text>
+                                </View>
+                            </Pressable>
+                        ))}
+                    </View>
                 </Pressable>
-            </Modal>
-        </View>
+            </Pressable>
+        </Modal>
     );
 }

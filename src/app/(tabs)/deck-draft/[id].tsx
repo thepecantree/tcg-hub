@@ -39,8 +39,9 @@ import DeckImportPanel from "@/components/decks/DeckImportPanel";
 import DeckPreviewPanel from "@/components/decks/DeckPreviewPanel";
 import DeckActionsBar from "@/components/decks/DeckActionsBar";
 
-const API_BASE_URL =
-    "http://localhost:4000";
+import {
+    API_BASE_URL,
+} from "@/api/config";
 
 type UserDeck = {
     id: string;

@@ -20,8 +20,9 @@ import CardListRow from "@/components/cards/CardListRow";
 import DeckGridView from "@/components/cards/DeckGridView";
 import PrintingPickerModal from "@/components/cards/PrintingPickerModal";
 
-const API_BASE_URL =
-    "http://localhost:4000";
+import {
+    API_BASE_URL,
+} from "@/api/config";
 
 type Props =
     CardEntryListProps & {

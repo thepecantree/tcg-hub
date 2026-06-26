@@ -33,8 +33,9 @@ import CardSearchSettingsModal from "@/components/cards/CardSearchSettingsModal"
 import LocalBinderDemand from "@/components/cards/LocalBinderDemand";
 import LocalWishlistAvailability from "@/components/cards/LocalWishlistAvailability";
 
-const API_BASE_URL =
-    "http://localhost:4000";
+import {
+    API_BASE_URL,
+} from "@/api/config";
 
 export default function CardsScreen() {
     const { theme } =

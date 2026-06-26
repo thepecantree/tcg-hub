@@ -71,6 +71,120 @@ router.get("/editions", (req, res) => {
     res.json(cards);
 });
 
+router.get("/demand", (req, res) => {
+    const cardName =
+        String(req.query.cardName ?? "").trim();
+
+    const excludeUserId =
+        String(req.query.excludeUserId ?? "").trim();
+
+    if (!cardName) {
+        return res.json([]);
+    }
+
+    const rows = db
+        .prepare(
+            `
+            SELECT
+                u.id as userId,
+                u.username,
+                u.display_name as displayName,
+                u.avatar,
+                u.location,
+
+                e.card_name as cardName,
+                e.scryfall_id as scryfallId,
+                e.set_name as setName,
+                e.set_code as setCode,
+                e.collector_number as collectorNumber,
+                e.image_small as imageSmall,
+                e.type_line as typeLine,
+                e.rarity,
+                e.mana_value as manaValue,
+                e.colors,
+                e.foil,
+                e.quantity,
+                e.print_specific as printSpecific
+            FROM user_card_entries e
+            JOIN users u
+                ON u.id = e.user_id
+            WHERE
+                e.list_type = 'wishlist'
+                AND LOWER(e.card_name) = LOWER(@cardName)
+                AND (
+                    @excludeUserId = ''
+                    OR e.user_id != @excludeUserId
+                )
+            ORDER BY
+                u.display_name ASC,
+                e.card_name ASC
+            `
+        )
+        .all({
+            cardName,
+            excludeUserId,
+        });
+
+    res.json(rows);
+});
+
+router.get("/availability", (req, res) => {
+    const cardName =
+        String(req.query.cardName ?? "").trim();
+
+    const excludeUserId =
+        String(req.query.excludeUserId ?? "").trim();
+
+    if (!cardName) {
+        return res.json([]);
+    }
+
+    const rows = db
+        .prepare(
+            `
+            SELECT
+                u.id as userId,
+                u.username,
+                u.display_name as displayName,
+                u.avatar,
+                u.location,
+
+                e.card_name as cardName,
+                e.scryfall_id as scryfallId,
+                e.set_name as setName,
+                e.set_code as setCode,
+                e.collector_number as collectorNumber,
+                e.image_small as imageSmall,
+                e.type_line as typeLine,
+                e.rarity,
+                e.mana_value as manaValue,
+                e.colors,
+                e.foil,
+                e.quantity,
+                e.print_specific as printSpecific
+            FROM user_card_entries e
+            JOIN users u
+                ON u.id = e.user_id
+            WHERE
+                e.list_type = 'collection'
+                AND LOWER(e.card_name) = LOWER(@cardName)
+                AND (
+                    @excludeUserId = ''
+                    OR e.user_id != @excludeUserId
+                )
+            ORDER BY
+                u.display_name ASC,
+                e.card_name ASC
+            `
+        )
+        .all({
+            cardName,
+            excludeUserId,
+        });
+
+    res.json(rows);
+});
+
 router.get("/:id", (req, res) => {
     const card = db
         .prepare(

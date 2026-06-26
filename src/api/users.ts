@@ -1,5 +1,6 @@
-const API_BASE_URL =
-    "http://localhost:4000";
+import {
+    apiFetch,
+} from "@/api/client";
 
 export type ServerUser = {
     id: string;
@@ -15,8 +16,8 @@ export async function fetchUserProfile(
     userId: string
 ) {
     const response =
-        await fetch(
-            `${API_BASE_URL}/users/${encodeURIComponent(
+        await apiFetch(
+            `/users/${encodeURIComponent(
                 userId
             )}`
         );
@@ -49,16 +50,12 @@ export async function updateUserProfile(
     }
 ) {
     const response =
-        await fetch(
-            `${API_BASE_URL}/users/${encodeURIComponent(
+        await apiFetch(
+            `/users/${encodeURIComponent(
                 userId
             )}`,
             {
                 method: "PATCH",
-                headers: {
-                    "Content-Type":
-                        "application/json",
-                },
                 body: JSON.stringify(
                     profile
                 ),
