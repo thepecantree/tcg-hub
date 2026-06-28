@@ -38,3 +38,27 @@ export async function apiFetch(
         }
     );
 }
+
+export async function apiFetchWithToken(
+    path: string,
+    token: string,
+    init: RequestInit = {}
+) {
+    const headers: HeadersInit = {
+        ...(init.headers ?? {}),
+        ...(init.body
+            ? {
+                "Content-Type": "application/json",
+            }
+            : {}),
+        Authorization: `Bearer ${token}`,
+    };
+
+    return fetch(
+        `${API_BASE_URL}${path}`,
+        {
+            ...init,
+            headers,
+        }
+    );
+}

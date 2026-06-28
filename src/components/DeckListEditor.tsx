@@ -1,6 +1,6 @@
 import {
-    API_BASE_URL,
-} from "@/api/config";
+    apiFetch,
+} from "@/api/client";
 
 import {
     Pressable,
@@ -184,16 +184,12 @@ export default function DeckListEditor({
     async function addDeck() {
         try {
             const response =
-                await fetch(
-                    `${API_BASE_URL}/users/${encodeURIComponent(
+                await apiFetch(
+                    `/users/${encodeURIComponent(
                         userId
                     )}/decks`,
                     {
                         method: "POST",
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
                         body:
                             JSON.stringify({
                                 name:
@@ -253,8 +249,8 @@ export default function DeckListEditor({
     ) {
         try {
             const response =
-                await fetch(
-                    `${API_BASE_URL}/users/${encodeURIComponent(
+                await apiFetch(
+                    `/users/${encodeURIComponent(
                         userId
                     )}/decks/${encodeURIComponent(
                         id

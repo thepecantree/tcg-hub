@@ -8,8 +8,9 @@ import {
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import {
-    API_BASE_URL,
-} from "@/api/config";
+    apiFetch,
+    apiFetchWithToken,
+} from "@/api/client";
 
 export type AuthUser = {
     id: string;
@@ -100,14 +101,9 @@ export function AuthProvider({
             }
 
             const response =
-                await fetch(
-                    `${API_BASE_URL}/auth/me`,
-                    {
-                        headers: {
-                            Authorization:
-                                `Bearer ${storedToken}`,
-                        },
-                    }
+                await apiFetchWithToken(
+                    "/auth/me",
+                    storedToken
                 );
 
             if (!response.ok) {
@@ -156,17 +152,10 @@ export function AuthProvider({
     ) {
         try {
             const response =
-                await fetch(
-                    `${API_BASE_URL}/auth/login`,
+                await apiFetch(
+                    "/auth/login",
                     {
-                        method:
-                            "POST",
-
-                        headers: {
-                            "Content-Type":
-                                "application/json",
-                        },
-
+                        method: "POST",
                         body:
                             JSON.stringify({
                                 identifier,
@@ -205,18 +194,13 @@ export function AuthProvider({
     async function logout() {
         try {
             if (token) {
-                await fetch(
-                    `${API_BASE_URL}/auth/logout`,
-                    {
-                        method:
-                            "POST",
-
-                        headers: {
-                            Authorization:
-                                `Bearer ${token}`,
-                        },
-                    }
-                );
+                await apiFetchWithToken(
+    "/auth/logout",
+    token,
+    {
+        method: "POST",
+    }
+);
             }
         } catch { }
 

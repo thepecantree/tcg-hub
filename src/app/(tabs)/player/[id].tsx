@@ -7,6 +7,10 @@ import {
 } from "react";
 
 import {
+    API_BASE_URL,
+} from "@/api/config";
+
+import {
     Alert,
     Text,
     View,
@@ -139,12 +143,12 @@ export default function PlayerProfileScreen() {
                     ] =
                         await Promise.all([
                             fetch(
-                                `http://localhost:4000/users/${encodeURIComponent(
+                                `${API_BASE_URL}/users/${encodeURIComponent(
                                     id
                                 )}/cards?listType=collection`
                             ),
                             fetch(
-                                `http://localhost:4000/users/${encodeURIComponent(
+                                `${API_BASE_URL}/users/${encodeURIComponent(
                                     id
                                 )}/cards?listType=wishlist`
                             ),
@@ -168,7 +172,7 @@ export default function PlayerProfileScreen() {
 
                     const decksResponse =
                         await fetch(
-                            `http://localhost:4000/users/${encodeURIComponent(
+                            `${API_BASE_URL}/users/${encodeURIComponent(
                                 id
                             )}/decks`
                         );
