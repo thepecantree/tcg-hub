@@ -1,4 +1,7 @@
 import { Router } from "express";
+import {
+    requireAuth,
+} from "../middleware/requireAuth";
 
 import db from "../db";
 
@@ -38,11 +41,21 @@ router.get("/:id", (req, res) => {
     });
 });
 
-router.patch("/:id", (req, res) => {
+router.patch(
+    "/:id",
+    requireAuth,
+    (req, res) => {
     try {
         const id =
             String(req.params.id ?? "").trim();
+        const authenticatedUserId =
+            String((req as any).userId ?? "");
 
+        if (authenticatedUserId !== id) {
+            return res.status(403).json({
+                error: "Forbidden",
+            });
+        }
         const displayName =
             String(req.body.displayName ?? "").trim();
 
@@ -155,6 +168,7 @@ router.patch("/:id", (req, res) => {
                 "Could not update user",
         });
     }
-});
+    }
+);
 
 export default router;

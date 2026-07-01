@@ -54,9 +54,13 @@ function ensureUserExists(userId: string) {
 }
 
 router.get("/:id/decks", (req, res) => {
-
     const userId = String(req.params.id ?? "").trim();
-    
+
+    const viewerUserId =
+        String(req.query.viewerUserId ?? "").trim();
+
+    const isOwner =
+        viewerUserId === userId;
 
     const rows = db
         .prepare(
@@ -68,14 +72,18 @@ router.get("/:id/decks", (req, res) => {
                 face_card_name as faceCardName,
                 face_card_image as faceCardImage,
                 is_public as isPublic,
-                visibility as visibility,
+                visibility,
                 format,
                 power_level as powerLevel,
-                visibility,
                 created_at as createdAt,
                 updated_at as updatedAt
             FROM decks
-            WHERE user_id = @userId
+            WHERE
+                user_id = @userId
+                AND (
+                    @isOwner = 1
+                    OR visibility = 'public'
+                )
             ORDER BY
                 format ASC,
                 power_level DESC,
@@ -84,6 +92,7 @@ router.get("/:id/decks", (req, res) => {
         )
         .all({
             userId,
+            isOwner: isOwner ? 1 : 0,
         });
 
     res.json({
@@ -198,14 +207,13 @@ router.post(
 
 router.get("/:id/decks/:deckId", (req, res) => {
     const userId = String(req.params.id ?? "").trim();
-    const authenticatedUserId =
-        (req as any).userId;
-    if (authenticatedUserId !== userId) {
-        return res.status(403).json({
-            error: "Forbidden",
-        });
-    }
     const deckId = String(req.params.deckId ?? "").trim();
+
+    const viewerUserId =
+        String(req.query.viewerUserId ?? "").trim();
+
+    const isOwner =
+        viewerUserId === userId;
 
     const deckRow = db
         .prepare(
@@ -220,19 +228,23 @@ router.get("/:id/decks/:deckId", (req, res) => {
                 visibility,
                 format,
                 power_level as powerLevel,
-                visibility,
                 created_at as createdAt,
                 updated_at as updatedAt
             FROM decks
             WHERE
                 id = @deckId
                 AND user_id = @userId
+                AND (
+                    @isOwner = 1
+                    OR visibility IN ('public', 'unlisted')
+                )
             LIMIT 1
             `
         )
         .get({
             userId,
             deckId,
+            isOwner: isOwner ? 1 : 0,
         });
 
     if (!deckRow) {
@@ -247,7 +259,6 @@ router.get("/:id/decks/:deckId", (req, res) => {
             SELECT
                 id,
                 deck_id as deckId,
-
                 card_name as cardName,
                 scryfall_id as scryfallId,
                 set_name as setName,
@@ -258,11 +269,9 @@ router.get("/:id/decks/:deckId", (req, res) => {
                 rarity,
                 mana_value as manaValue,
                 colors,
-
                 foil,
                 quantity,
                 print_specific as printSpecific,
-
                 created_at as createdAt,
                 updated_at as updatedAt
             FROM deck_cards
@@ -288,7 +297,8 @@ router.patch(
     (req, res) => {
         const userId = String(req.params.id ?? "").trim();
         const authenticatedUserId =
-            (req as any).userId;
+            String((req as any).userId ?? "");
+
         if (authenticatedUserId !== userId) {
             return res.status(403).json({
                 error: "Forbidden",
